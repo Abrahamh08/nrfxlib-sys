@@ -8,12 +8,14 @@
 	feature = "nrf9120",
 	feature = "nrf9151",
 	feature = "nrf9161",
+	feature = "nrf5340",
 )))]
 compile_error!(
 	"No chip feature selected. You must selected exactly one of the following features:
     nrf9160,
     nrf9151,
     nrf9161,
+    nrf5340,
     "
 );
 
@@ -33,7 +35,7 @@ fn main() {
 	// The bindgen::Builder is the main entry point
 	// to bindgen, and lets you build up options for
 	// the resulting bindings.
-	let bindings = bindgen::Builder::default()
+	let mut builder = bindgen::Builder::default()
 		// The input header we would like to generate
 		// bindings for.
 		.header("wrapper.h")
@@ -46,6 +48,7 @@ fn main() {
 		.clang_arg("-I./third_party/nordic/nrfxlib/crypto/nrf_cc310_mbedcrypto/include")
 		.clang_arg("-I./third_party/nordic/nrfxlib/crypto/nrf_oberon")
 		.clang_arg("-I./third_party/nordic/nrfxlib/nrf_modem/include")
+		.clang_arg("-I./third_party/nordic/nrfxlib/nrf_fuel_gauge/include")
 		// Disable standard includes (they belong to the host)
 		.clang_arg("-nostdinc")
 		// Set the target
@@ -70,11 +73,20 @@ fn main() {
 		// Format the output
 		.formatter(bindgen::Formatter::Rustfmt)
 		// Disable so it can build on desktop too
-		.layout_tests(false)
-		// Finish the builder and generate the bindings.
-		.generate()
-		// Unwrap the Result and panic on failure.
-		.expect("Unable to generate bindings");
+		.layout_tests(false);
+
+	if cfg!(not(feature = "nrf5340")) {
+		builder = builder.clang_arg("-DNRFXLIB_SYS_MODEM");
+	}
+	if cfg!(any(feature = "nrf_fuel_gauge", feature = "nrf_fuel_gauge_primary_cell")) {
+		builder = builder
+			.clang_arg("-DNRFXLIB_SYS_FUEL_GAUGE")
+			.allowlist_function("nrf_fuel_gauge_.*")
+			.allowlist_type("nrf_fuel_gauge_.*")
+			.allowlist_var("NRF_FUEL_GAUGE_.*");
+	}
+	// Finish the builder and generate the bindings.
+	let bindings = builder.generate().expect("Unable to generate bindings");
 
 	// Write the bindings to the $OUT_DIR/bindings.rs file.
 	let mut rust_source = bindings.to_string();
@@ -107,97 +119,101 @@ fn main() {
 	let bindings_out_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs");
 	std::fs::write(bindings_out_path, rust_source).expect("Couldn't write updated bindgen output");
 
-	#[cfg(all(
-		feature = "nrf9160",
-		not(feature = "dect-phy"),
-		not(feature = "dect-mac")
-	))]
-	let libmodem_original_path = if cfg!(feature = "log") {
-		Path::new(&nrfxlib_path).join("nrf_modem/lib/cellular/nrf9160/hard-float/libmodem_log.a")
-	} else {
-		Path::new(&nrfxlib_path).join("nrf_modem/lib/cellular/nrf9160/hard-float/libmodem.a")
-	};
-
-	#[cfg(all(
-		feature = "nrf9120",
-		not(feature = "dect-phy"),
-		not(feature = "dect-mac")
-	))]
-	let libmodem_original_path = if cfg!(feature = "log") {
-		Path::new(&nrfxlib_path).join("nrf_modem/lib/cellular/nrf9120/hard-float/libmodem_log.a")
-	} else {
-		Path::new(&nrfxlib_path).join("nrf_modem/lib/cellular/nrf9120/hard-float/libmodem.a")
-	};
-
-	#[cfg(all(feature = "nrf9160", feature = "dect-phy"))]
-	compile_error!("The DECT library is not available for the nRF9160 series.");
-
-	#[cfg(all(feature = "nrf9160", feature = "dect-mac"))]
-	compile_error!("The DECT MAC library is not available for the nRF9160 series.");
-
-	#[cfg(all(feature = "nrf9120", feature = "dect-phy", not(feature = "dect-mac")))]
-	let libmodem_original_path = if cfg!(feature = "log") {
-		Path::new(&nrfxlib_path).join("nrf_modem/lib/dect_phy/nrf9120/hard-float/libmodem_log.a")
-	} else {
-		Path::new(&nrfxlib_path).join("nrf_modem/lib/dect_phy/nrf9120/hard-float/libmodem.a")
-	};
-
-	#[cfg(all(feature = "nrf9120", feature = "dect-mac"))]
-	let libmodem_original_path = if cfg!(feature = "log") {
-		Path::new(&nrfxlib_path).join("nrf_modem/lib/dect/nrf9120/hard-float/libmodem_log.a")
-	} else {
-		Path::new(&nrfxlib_path).join("nrf_modem/lib/dect/nrf9120/hard-float/libmodem.a")
-	};
-
-	let libmodem_changed_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("libmodem.a");
-
-	// The modem library now has compressed headers, but Rust cannot deal with that.
-	// If the appropriate features is active, we're gonna strip it or decompress it.
-	#[cfg(feature = "arm-none-eabi-objcopy")]
+	#[cfg(not(feature = "nrf5340"))]
 	{
-		// We assume the arm-none-eabi-objcopy comes from the official arm website.
-		let child = std::process::Command::new("arm-none-eabi-objcopy")
-			.arg("--decompress-debug-sections")
-			.arg(&libmodem_original_path)
-			.arg(&libmodem_changed_path)
-			.spawn()
-			.expect("Could not start `arm-none-eabi-objcopy`. Is it installed and available in your path?");
+		#[cfg(all(
+			feature = "nrf9160",
+			not(feature = "dect-phy"),
+			not(feature = "dect-mac")
+		))]
+		let libmodem_original_path = if cfg!(feature = "log") {
+			Path::new(&nrfxlib_path).join("nrf_modem/lib/cellular/nrf9160/hard-float/libmodem_log.a")
+		} else {
+			Path::new(&nrfxlib_path).join("nrf_modem/lib/cellular/nrf9160/hard-float/libmodem.a")
+		};
 
-		let child_result = child.wait_with_output().unwrap();
-		if !child_result.status.success() {
-			panic!("Something went wrong with `arm-none-eabi-objcopy`.");
+		#[cfg(all(
+			feature = "nrf9120",
+			not(feature = "dect-phy"),
+			not(feature = "dect-mac")
+		))]
+		let libmodem_original_path = if cfg!(feature = "log") {
+			Path::new(&nrfxlib_path).join("nrf_modem/lib/cellular/nrf9120/hard-float/libmodem_log.a")
+		} else {
+			Path::new(&nrfxlib_path).join("nrf_modem/lib/cellular/nrf9120/hard-float/libmodem.a")
+		};
+
+		#[cfg(all(feature = "nrf9160", feature = "dect-phy"))]
+		compile_error!("The DECT library is not available for the nRF9160 series.");
+
+		#[cfg(all(feature = "nrf9160", feature = "dect-mac"))]
+		compile_error!("The DECT MAC library is not available for the nRF9160 series.");
+
+		#[cfg(all(feature = "nrf9120", feature = "dect-phy", not(feature = "dect-mac")))]
+		let libmodem_original_path = if cfg!(feature = "log") {
+			Path::new(&nrfxlib_path).join("nrf_modem/lib/dect_phy/nrf9120/hard-float/libmodem_log.a")
+		} else {
+			Path::new(&nrfxlib_path).join("nrf_modem/lib/dect_phy/nrf9120/hard-float/libmodem.a")
+		};
+
+		#[cfg(all(feature = "nrf9120", feature = "dect-mac"))]
+		let libmodem_original_path = if cfg!(feature = "log") {
+			Path::new(&nrfxlib_path).join("nrf_modem/lib/dect/nrf9120/hard-float/libmodem_log.a")
+		} else {
+			Path::new(&nrfxlib_path).join("nrf_modem/lib/dect/nrf9120/hard-float/libmodem.a")
+		};
+
+		let libmodem_changed_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("libmodem.a");
+
+		// The modem library now has compressed headers, but Rust cannot deal with that.
+		// If the appropriate features is active, we're gonna strip it or decompress it.
+		#[cfg(feature = "arm-none-eabi-objcopy")]
+		{
+			// We assume the arm-none-eabi-objcopy comes from the official arm website.
+			let child = std::process::Command::new("arm-none-eabi-objcopy")
+				.arg("--decompress-debug-sections")
+				.arg(&libmodem_original_path)
+				.arg(&libmodem_changed_path)
+				.spawn()
+				.expect("Could not start `arm-none-eabi-objcopy`. Is it installed and available in your path?");
+
+			let child_result = child.wait_with_output().unwrap();
+			if !child_result.status.success() {
+				panic!("Something went wrong with `arm-none-eabi-objcopy`.");
+			}
 		}
-	}
-	#[cfg(feature = "llvm-objcopy")]
-	{
-		// We assume the llvm-objcopy comes from the rustup llvm-tools.
-		// This cannot do decompression, so we'll just strip the debug sections
+		#[cfg(feature = "llvm-objcopy")]
+		{
+			// We assume the llvm-objcopy comes from the rustup llvm-tools.
+			// This cannot do decompression, so we'll just strip the debug sections
 
-		let tool_error = "Could not find `llvm-objcopy`. Is it installed? Use `rustup component add llvm-tools` to install it or select the `arm-none-eabi-objcopy` feature if you have that tool installed.";
-		// It's not in our path, so we have to search for it
-		let path = llvm_tools::LlvmTools::new()
-			.expect(tool_error)
-			.tool(&llvm_tools::exe("llvm-objcopy"))
-			.expect(tool_error);
+			let tool_error = "Could not find `llvm-objcopy`. Is it installed? Use `rustup component add llvm-tools` to install it or select the `arm-none-eabi-objcopy` feature if you have that tool installed.";
+			// It's not in our path, so we have to search for it
+			let path = llvm_tools::LlvmTools::new()
+				.expect(tool_error)
+				.tool(&llvm_tools::exe("llvm-objcopy"))
+				.expect(tool_error);
 
-		let child = std::process::Command::new(path)
-			.arg("--strip-debug")
-			.arg(&libmodem_original_path)
-			.arg(&libmodem_changed_path)
-			.spawn()
-			.expect(tool_error);
+			let child = std::process::Command::new(path)
+				.arg("--strip-debug")
+				.arg(&libmodem_original_path)
+				.arg(&libmodem_changed_path)
+				.spawn()
+				.expect(tool_error);
 
-		let child_result = child.wait_with_output().unwrap();
-		if !child_result.status.success() {
-			panic!("Something went wrong with `llvm-objcopy`.");
+			let child_result = child.wait_with_output().unwrap();
+			if !child_result.status.success() {
+				panic!("Something went wrong with `llvm-objcopy`.");
+			}
 		}
+
+		println!(
+			"cargo:rustc-link-search={}",
+			libmodem_changed_path.parent().unwrap().display()
+		);
+		println!("cargo:rustc-link-lib=static=modem");
 	}
 
-	// Make sure we link against the libraries
-	println!(
-		"cargo:rustc-link-search={}",
-		libmodem_changed_path.parent().unwrap().display()
-	);
 	println!(
 		"cargo:rustc-link-search={}",
 		Path::new(&nrfxlib_path)
@@ -211,7 +227,29 @@ fn main() {
 			.join("crypto/nrf_cc310_platform/lib/cortex-m33/hard-float/no-interrupts")
 			.display()
 	);
-	println!("cargo:rustc-link-lib=static=modem");
 	println!("cargo:rustc-link-lib=static=oberon_3.0.19");
 	println!("cargo:rustc-link-lib=static=nrf_cc310_platform_0.9.22");
+
+	#[cfg(any(feature = "nrf_fuel_gauge", feature = "nrf_fuel_gauge_primary_cell"))]
+	{
+		let float_abi = if env::var("TARGET").unwrap().ends_with("eabihf") {
+			"hard-float"
+		} else {
+			"soft-float"
+		};
+		println!(
+			"cargo:rustc-link-search={}",
+			Path::new(&nrfxlib_path)
+				.join("nrf_fuel_gauge/lib/cortex-m33")
+				.join(float_abi)
+				.display()
+		);
+		// The secondary-cell library wins if both features are set.
+		let lib = if cfg!(feature = "nrf_fuel_gauge") {
+			"nrf_fuel_gauge"
+		} else {
+			"nrf_fuel_gauge_primary"
+		};
+		println!("cargo:rustc-link-lib=static={lib}");
+	}
 }

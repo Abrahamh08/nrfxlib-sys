@@ -3,24 +3,6 @@
  */
 
 /*
- * libmodem headers
- */
-#include "nrf_modem/include/nrf_modem.h"
-#include "nrf_modem/include/nrf_modem_os.h"
-#include "nrf_modem/include/nrf_errno.h"
-#include "nrf_modem/include/nrf_socket.h"
-#include "nrf_modem/include/nrf_modem_gnss.h"
-#include "nrf_modem/include/nrf_modem_delta_dfu.h"
-#include "nrf_modem/include/nrf_modem_at.h"
-#include "nrf_modem/include/nrf_modem_bootloader.h"
-#include "nrf_modem/include/nrf_modem_trace.h"
-#include "nrf_modem/include/nrf_gai_errors.h"
-#include "nrf_modem/include/nrf_modem_dect_phy.h"
-#include "nrf_modem/include/nrf_modem_dect_clock_sync.h"
-#include "nrf_modem/include/nrf_modem_dect.h"
-#include "nrf_modem/include/nrf_modem_rs_capture.h"
-
-/*
  * Crypto Cell 310 (CC310) platform headers
  */
 
@@ -85,5 +67,29 @@
 #include "crypto/nrf_oberon/include/ocrypto_srp.h"
 #include "crypto/nrf_oberon/include/ocrypto_srtp.h"
 #include "crypto/nrf_oberon/include/ocrypto_types.h"
+
+#ifdef NRFXLIB_SYS_MODEM
+/*
+ * libmodem headers
+ */
+#include "nrf_modem/include/nrf_modem.h"
+#include "nrf_modem/include/nrf_modem_os.h"
+#include "nrf_modem/include/nrf_errno.h"
+#include "nrf_modem/include/nrf_socket.h"
+#include "nrf_modem/include/nrf_modem_gnss.h"
+#include "nrf_modem/include/nrf_modem_delta_dfu.h"
+#include "nrf_modem/include/nrf_modem_at.h"
+#include "nrf_modem/include/nrf_modem_bootloader.h"
+#include "nrf_modem/include/nrf_modem_trace.h"
+#include "nrf_modem/include/nrf_gai_errors.h"
+#include "nrf_modem/include/nrf_modem_dect_phy.h"
+#include "nrf_modem/include/nrf_modem_dect_clock_sync.h"
+#include "nrf_modem/include/nrf_modem_dect.h"
+#include "nrf_modem/include/nrf_modem_rs_capture.h"
+#endif
+
+#ifdef NRFXLIB_SYS_FUEL_GAUGE
+#include "nrf_fuel_gauge/include/nrf_fuel_gauge.h"
+#endif
 
 // End of File

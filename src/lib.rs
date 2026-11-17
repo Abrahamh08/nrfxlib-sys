@@ -15,4 +15,5 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 // Compat shim: libmodem 3.3 renamed `NRF_MODEM_DECT_PHY_SHMEM_CTRL_SIZE` to
 // `NRF_MODEM_DECT_SHMEM_CTRL_SIZE`. Keep the old name available so downstream
 // crates (notably `nrf-modem`) continue to compile against this version.
+#[cfg(not(feature = "nrf5340"))]
 pub const NRF_MODEM_DECT_PHY_SHMEM_CTRL_SIZE: u32 = NRF_MODEM_DECT_SHMEM_CTRL_SIZE;

@@ -38,6 +38,12 @@ include = [
 	"third_party/nordic/nrfxlib/crypto/nrf_oberon/lib/cortex-m33/hard-float/**",
 	"third_party/nordic/nrfxlib/crypto/nrf_oberon/include/**",
 	"third_party/nordic/nrfxlib/crypto/nrf_oberon/license.txt",
+	"third_party/nordic/nrfxlib/nrf_fuel_gauge/include/**",
+	"third_party/nordic/nrfxlib/nrf_fuel_gauge/lib/cortex-m33/hard-float/libnrf_fuel_gauge.a",
+	"third_party/nordic/nrfxlib/nrf_fuel_gauge/lib/cortex-m33/hard-float/libnrf_fuel_gauge_primary.a",
+	"third_party/nordic/nrfxlib/nrf_fuel_gauge/lib/cortex-m33/soft-float/libnrf_fuel_gauge.a",
+	"third_party/nordic/nrfxlib/nrf_fuel_gauge/lib/cortex-m33/soft-float/libnrf_fuel_gauge_primary.a",
+	"third_party/nordic/nrfxlib/nrf_fuel_gauge/license.txt",
 ]
 
 [package.metadata.docs.rs]
@@ -84,3 +90,10 @@ nrf9151 = ["nrf9120"]
 nrf9161 = ["nrf9120"]
 # The nrf9120 is the part number of the SoC internal to the nrf9151 and nrf9161 SiPs
 nrf9120 = []
+## The nRF5340 has no modem: the modem headers and library are left out.
+nrf5340 = []
+
+## Bindings and link for the nRF Fuel Gauge library (secondary cell; wins if both are set)
+nrf_fuel_gauge = []
+## Same, for the primary-cell variant
+nrf_fuel_gauge_primary_cell = []
