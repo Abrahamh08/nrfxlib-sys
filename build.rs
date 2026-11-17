@@ -83,7 +83,8 @@ fn main() {
 			.clang_arg("-DNRFXLIB_SYS_FUEL_GAUGE")
 			.allowlist_function("nrf_fuel_gauge_.*")
 			.allowlist_type("nrf_fuel_gauge_.*")
-			.allowlist_var("NRF_FUEL_GAUGE_.*");
+			.allowlist_var("NRF_FUEL_GAUGE_.*")
+			.allowlist_var("nrf_fuel_gauge_.*");
 	}
 	// Finish the builder and generate the bindings.
 	let bindings = builder.generate().expect("Unable to generate bindings");

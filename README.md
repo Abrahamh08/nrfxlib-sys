@@ -32,6 +32,10 @@ In your own program or library, you can depend on this crate in the usual fashio
 nrfxlib-sys = { version = "4.0.0", features = ["nrf9160"] }
 ```
 
+The `nrf_fuel_gauge` and `nrf_fuel_gauge_primary_cell` features expose the fuel
+gauge API, including the `nrf_fuel_gauge_version` and
+`nrf_fuel_gauge_build_date` globals.
+
 Because the modem library has its debug sections compressed and Rust's tooling doesn't have support for
 that by default, this crate either strips the debug sections or decompresses them.
 
